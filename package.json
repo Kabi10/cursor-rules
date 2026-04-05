@@ -1,10 +1,10 @@
 {
-  "name": "cursor-rules",
+  "name": "cursor-init",
   "version": "1.0.0",
   "description": "Auto-detect your stack and generate a tailored .cursorrules file. npx cursor-rules init",
   "type": "module",
   "bin": {
-    "cursor-rules": "src/cli.js"
+    "cursor-init": "src/cli.js"
   },
   "files": [
     "src/",
@@ -28,6 +28,11 @@
     "cli"
   ],
   "license": "MIT",
+  "homepage": "https://github.com/Kabi10/cursor-rules",
+  "bugs": {
+    "url": "https://github.com/Kabi10/cursor-rules/issues"
+  },
+  "author": "Kabi10",
   "repository": {
     "type": "git",
     "url": "https://github.com/Kabi10/cursor-rules.git"
