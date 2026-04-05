@@ -6,6 +6,9 @@
 .vs/
 *.swp
 *~
+node_modules/
+.cursorrules
+.cursor/
 
 # OS Files
 .DS_Store
