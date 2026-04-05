@@ -1,7 +1,7 @@
 {
   "name": "cursor-compose",
   "version": "1.0.0",
-  "description": "Auto-detect your stack and compose a tailored .cursorrules file. npx cursor-compose",
+  "description": "Auto-detect your stack and generate Cursor project rules (.cursor/rules/project.mdc). npx cursor-compose",
   "type": "module",
   "bin": {
     "cursor-compose": "src/cli.js"
