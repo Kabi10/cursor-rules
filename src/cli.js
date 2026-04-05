@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import prompts from 'prompts';
 import kleur from 'kleur';
-import { existsSync } from 'fs';
+import { existsSync, readdirSync } from 'fs';
+import { join } from 'path';
 import { detectModules } from './detect.js';
-import { composeModules, writeRules, estimateTokens } from './compose.js';
+import { writeRulesMdc, writeRulesLegacy, estimateTokens, composeModules } from './compose.js';
 
 const ALL_MODULES = [
   'core',
@@ -36,6 +37,9 @@ async function main() {
     process.exit(1);
   }
 
+  // --legacy flag
+  const isLegacy = process.argv.includes('--legacy');
+
   console.log(kleur.bold('\ncursor-compose\n'));
 
   const detected = detectModules();
@@ -50,7 +54,7 @@ async function main() {
   const { selected } = await prompts({
     type: 'multiselect',
     name: 'selected',
-    message: 'Select modules to include (space to toggle, enter to confirm):',
+    message: 'Select modules (space to toggle, enter to confirm):',
     choices: ALL_MODULES.map((m) => ({
       title: m,
       value: m,
@@ -64,34 +68,43 @@ async function main() {
     process.exit(0);
   }
 
-  // Format selection
-  const { format } = await prompts({
-    type: 'select',
-    name: 'format',
-    message: 'Output format:',
-    choices: [
-      {
-        title: '.cursorrules  (legacy — works with all Cursor versions)',
-        value: 'legacy',
-      },
-      {
-        title: '.cursor/rules/project.mdc  (2026 format)',
-        value: 'mdc',
-      },
-    ],
-  });
+  if (isLegacy) {
+    // Legacy: single .cursorrules file
+    const outFile = '.cursorrules';
+    if (existsSync(outFile)) {
+      const { action } = await prompts({
+        type: 'select',
+        name: 'action',
+        message: `${kleur.yellow(outFile)} already exists:`,
+        choices: [
+          { title: 'Overwrite', value: 'overwrite' },
+          { title: 'Cancel', value: 'cancel' },
+        ],
+        initial: 1,
+      });
+      if (!action || action === 'cancel') {
+        console.log(kleur.yellow('Cancelled.'));
+        process.exit(0);
+      }
+    }
+    const outPath = writeRulesLegacy(selected);
+    const tokens = estimateTokens(composeModules(selected));
+    console.log('\n' + kleur.green('Done! ') + `Written to ${kleur.bold(outPath)} (~${tokens} tokens)`);
+    console.log(kleur.dim('Restart Cursor to apply.\n'));
+    return;
+  }
 
-  if (!format) process.exit(0);
+  // Modern: one .mdc per module in .cursor/rules/
+  const rulesDir = join(process.cwd(), '.cursor', 'rules');
+  const existingMdc = existsSync(rulesDir)
+    ? readdirSync(rulesDir).filter(f => f.endsWith('.mdc'))
+    : [];
 
-  const outFile =
-    format === 'mdc' ? '.cursor/rules/project.mdc' : '.cursorrules';
-
-  // Overwrite check
-  if (existsSync(outFile)) {
+  if (existingMdc.length > 0) {
     const { action } = await prompts({
       type: 'select',
       name: 'action',
-      message: `${kleur.yellow(outFile)} already exists:`,
+      message: `${kleur.yellow('.cursor/rules/')} already has ${existingMdc.length} rule file(s):`,
       choices: [
         { title: 'Overwrite', value: 'overwrite' },
         { title: 'Cancel', value: 'cancel' },
@@ -104,16 +117,11 @@ async function main() {
     }
   }
 
-  const content = composeModules(selected);
-  const outPath = writeRules(content, format);
-  const tokens = estimateTokens(content);
+  const written = writeRulesMdc(selected);
 
-  console.log(
-    '\n' +
-      kleur.green('Done! ') +
-      `Written to ${kleur.bold(outPath)} (~${tokens} tokens)`
-  );
-  console.log(kleur.dim('Restart Cursor to apply changes.\n'));
+  console.log('\n' + kleur.green('Done! ') + `Wrote ${written.length} rule file(s) to ${kleur.bold('.cursor/rules/')}`);
+  written.forEach(f => console.log(kleur.dim('  ' + f.split(/[\\/]/).pop())));
+  console.log(kleur.dim('\nRestart Cursor to apply.\n'));
 }
 
 main().catch((err) => {

@@ -1,6 +1,6 @@
 {
   "name": "cursor-compose",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Auto-detect your stack and generate Cursor project rules (.cursor/rules/project.mdc). npx cursor-compose",
   "type": "module",
   "bin": {
