@@ -1,0 +1,6 @@
+name: my_app
+flutter:
+  uses-material-design: true
+dependencies:
+  flutter:
+    sdk: flutter

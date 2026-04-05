@@ -1,0 +1,13 @@
+{
+  "name": "my-app",
+  "dependencies": {
+    "next": "^14.0.0",
+    "react": "^18.0.0",
+    "typescript": "^5.0.0",
+    "@supabase/supabase-js": "^2.0.0",
+    "drizzle-orm": "^0.29.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"
+  }
+}
