@@ -31,12 +31,12 @@ async function main() {
   const [major] = process.versions.node.split('.').map(Number);
   if (major < 18) {
     console.error(
-      kleur.red('cursor-init requires Node 18+. Download at https://nodejs.org')
+      kleur.red('cursor-compose requires Node 18+. Download at https://nodejs.org')
     );
     process.exit(1);
   }
 
-  console.log(kleur.bold('\ncursor-init\n'));
+  console.log(kleur.bold('\ncursor-compose\n'));
 
   const detected = detectModules();
 

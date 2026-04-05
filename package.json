@@ -1,10 +1,10 @@
 {
-  "name": "cursor-init",
+  "name": "cursor-compose",
   "version": "1.0.0",
-  "description": "Auto-detect your stack and generate a tailored .cursorrules file. npx cursor-rules init",
+  "description": "Auto-detect your stack and compose a tailored .cursorrules file. npx cursor-compose",
   "type": "module",
   "bin": {
-    "cursor-init": "src/cli.js"
+    "cursor-compose": "src/cli.js"
   },
   "files": [
     "src/",
