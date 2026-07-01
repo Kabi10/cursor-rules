@@ -10,7 +10,7 @@ import {
   writeRulesAgentsMd,
   estimateTokens,
   composeModules,
-  AGENTS_START,
+  findManagedBlock,
 } from './compose.js';
 
 const ALL_MODULES = [
@@ -131,7 +131,7 @@ async function main() {
   // --legacy: single .cursorrules file
   if (isLegacy) {
     const outFile = '.cursorrules';
-    if (existsSync(outFile)) {
+    if (!isYes && existsSync(outFile)) {
       const { action } = await prompts({
         type: 'select',
         name: 'action',
@@ -170,14 +170,18 @@ async function main() {
 
   // --all: per-module .mdc AND AGENTS.md in one pass
   if (isAll) {
-    const written = writeRulesMdc(selected);
     const tokens = reportTokens();
+    // Resolve the AGENTS.md decision and write it first so a cancel aborts
+    // before any .mdc files are written (no half-done state).
     const onForeignFile = await resolveForeignDecision(isYes);
     const result = writeRulesAgentsMd(selected, process.cwd(), { onForeignFile });
-    console.log('\n' + kleur.green('Done! ') + `Wrote ${written.length} rule file(s) to ${kleur.bold('.cursor/rules/')}`);
-    if (result.action !== 'cancelled') {
-      console.log(kleur.green('       ') + `${actionVerb(result.action)} ${kleur.bold('AGENTS.md')} (~${tokens} tokens)`);
+    if (result.action === 'cancelled') {
+      console.log(kleur.yellow('Cancelled.'));
+      process.exit(0);
     }
+    const written = writeRulesMdc(selected);
+    console.log('\n' + kleur.green('Done! ') + `Wrote ${written.length} rule file(s) to ${kleur.bold('.cursor/rules/')}`);
+    console.log(kleur.green('       ') + `${actionVerb(result.action)} ${kleur.bold('AGENTS.md')} (~${tokens} tokens)`);
     console.log(kleur.dim('Restart Cursor to apply.\n'));
     return;
   }
@@ -188,7 +192,7 @@ async function main() {
     ? readdirSync(rulesDir).filter(f => f.endsWith('.mdc'))
     : [];
 
-  if (existingMdc.length > 0) {
+  if (!isYes && existingMdc.length > 0) {
     const { action } = await prompts({
       type: 'select',
       name: 'action',
@@ -220,7 +224,9 @@ async function main() {
 async function resolveForeignDecision(isYes) {
   const p = join(process.cwd(), 'AGENTS.md');
   if (!existsSync(p)) return () => 'append';
-  if (readFileSync(p, 'utf8').includes(AGENTS_START)) return () => 'append';
+  // A valid managed block is replaced in place by the writer — no prompt needed.
+  if (findManagedBlock(readFileSync(p, 'utf8'))) return () => 'append';
+  // Non-interactive: never prompt; append a managed block, preserving the file.
   if (isYes) return () => 'append';
 
   const { action } = await prompts({

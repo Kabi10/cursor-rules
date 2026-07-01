@@ -41,6 +41,49 @@ export function estimateTokens(text) {
 }
 
 /**
+ * Demotes every ATX markdown heading one level (h1→h2 … h5→h6), capping at h6,
+ * so a composed AGENTS.md keeps a single top-level H1 while preserving each
+ * module's internal heading hierarchy. Headings inside fenced code blocks
+ * (``` / ~~~) are left untouched.
+ *
+ * @param {string} md
+ * @returns {string}
+ */
+export function demoteHeadings(md) {
+  let inFence = false;
+  return md
+    .split('\n')
+    .map((line) => {
+      if (/^\s*(```|~~~)/.test(line)) {
+        inFence = !inFence;
+        return line;
+      }
+      if (inFence) return line;
+      return line.replace(/^(#{1,6})(\s)/, (_, hashes, ws) =>
+        (hashes.length >= 6 ? hashes : hashes + '#') + ws
+      );
+    })
+    .join('\n');
+}
+
+/**
+ * Locates cursor-compose's managed block: the start marker and the first end
+ * marker that follows it. Returns null when a valid, ordered pair is absent
+ * (e.g. an orphaned start marker), so callers treat the file as foreign rather
+ * than corrupt it.
+ *
+ * @param {string} content
+ * @returns {{ startIdx: number, endIdx: number } | null}
+ */
+export function findManagedBlock(content) {
+  const startIdx = content.indexOf(AGENTS_START);
+  if (startIdx === -1) return null;
+  const endIdx = content.indexOf(AGENTS_END, startIdx + AGENTS_START.length);
+  if (endIdx === -1) return null;
+  return { startIdx, endIdx };
+}
+
+/**
  * Writes each selected module as its own .mdc file with proper YAML frontmatter.
  * Files are written to .cursor/rules/ with numeric prefixes for load order.
  *
@@ -108,8 +151,8 @@ export function buildAgentsBlock(moduleIds) {
       return null;
     }
     const content = readFileSync(modPath, 'utf8').trim();
-    // Demote module headings so AGENTS.md has a single top-level H1.
-    return content.replace(/^# /gm, '## ');
+    // Demote every module heading one level so AGENTS.md keeps a single H1.
+    return demoteHeadings(content);
   }).filter(Boolean);
 
   const header =
@@ -146,12 +189,11 @@ export function writeRulesAgentsMd(moduleIds, cwd = process.cwd(), opts = {}) {
   }
 
   const existing = readFileSync(outPath, 'utf8');
-  const startIdx = existing.indexOf(AGENTS_START);
-  const endIdx = existing.indexOf(AGENTS_END);
+  const managed = findManagedBlock(existing);
 
-  if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-    const before = existing.slice(0, startIdx);
-    const after = existing.slice(endIdx + AGENTS_END.length);
+  if (managed) {
+    const before = existing.slice(0, managed.startIdx);
+    const after = existing.slice(managed.endIdx + AGENTS_END.length);
     writeFileSync(outPath, `${before}${block}${after}`, 'utf8');
     return { outPath, action: 'updated' };
   }
