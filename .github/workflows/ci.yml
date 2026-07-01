@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Least privilege: these jobs only read the repo and run tests.
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run tests
+        run: npm test
+
+  smoke:
+    # Proves the headline claim — the CLI runs non-interactively and writes files.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+      - run: npm install
+      - name: Smoke test the CLI in a sample project
+        run: |
+          mkdir -p /tmp/sample && cd /tmp/sample
+          echo '{"dependencies":{"next":"14.0.0","typescript":"5.0.0"}}' > package.json
+          node "$GITHUB_WORKSPACE/src/cli.js" --all --yes
+          test -f .cursor/rules/030-nextjs.mdc && echo "✅ .mdc generated" || (echo "❌ no .mdc" && exit 1)
+          test -f AGENTS.md && echo "✅ AGENTS.md generated" || (echo "❌ no AGENTS.md" && exit 1)
+          grep -q "cursor-compose:start" AGENTS.md && echo "✅ managed markers present" || (echo "❌ no markers" && exit 1)
+          ! grep -q "alwaysApply:" AGENTS.md && echo "✅ AGENTS.md is plain markdown" || (echo "❌ frontmatter leaked into AGENTS.md" && exit 1)
